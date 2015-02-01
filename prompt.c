@@ -2,7 +2,6 @@
 #include <stdlib.h>
 
 #include <editline/readline.h>
-#include <histedit.h>
 
 int main(int argc, char** argv) {
   puts("Lispy version 0.0.0.0.1");

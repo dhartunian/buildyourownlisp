@@ -1,6 +1,9 @@
-CFLAGS=-std=c99 -Wall -ledit -g
+CFLAGS=-std=c99 -Wall -ledit -lm -g
 
-all: prompt
+all: prompt parsing
 
+parsing:
+	cc $(CFLAGS) parsing.c mpc.c -o parsing
 clean:
-	rm -f prom
+	rm -f prompt
+	rm -f parsing
