@@ -10,7 +10,16 @@ long eval_op(long left, char* op, long right) {
   if (strcmp(op, "-") == 0) { return left - right; }
   if (strcmp(op, "*") == 0) { return left * right; }
   if (strcmp(op, "/") == 0) { return left / right; }
+  if (strcmp(op, "^") == 0) { return pow(left, right); }
+  if (strcmp(op, "%") == 0) { return left % right; }
+  if (strcmp(op, "max") == 0) { return fmax(left, right); }
+  if (strcmp(op, "min") == 0) { return fmin(left, right); }
   return 0;
+}
+
+long eval_unary(char* op, long value) {
+  if (strcmp(op, "-") == 0) { return -value; }
+  else return value;
 }
 
 long eval(mpc_ast_t* t) {
@@ -22,10 +31,14 @@ long eval(mpc_ast_t* t) {
   char* op = t->children[1]->contents;
   long x = eval(t->children[2]);
 
-  int i = 3;
-  while (strstr(t->children[i]->tag, "expr")) {
-    x = eval_op(x, op, eval(t->children[i]));
-    i++;
+  if (t->children_num <= 4) {
+    x = eval_unary(op, x);
+  } else {
+    int i = 3;
+    while (strstr(t->children[i]->tag, "expr")) {
+      x = eval_op(x, op, eval(t->children[i]));
+      i++;
+    }
   }
   return x;
 }
@@ -37,11 +50,11 @@ int main(int argc, char** argv) {
   mpc_parser_t* Lispy = mpc_new("lispy");
 
   mpca_lang(MPCA_LANG_DEFAULT,
-    "                                                       \
-     number   : /-?[0-9]+/ ;                                \
-     operator : '+' | '-' | '*' | '/' ;                     \
-     expr     : <number> | '(' <operator> <expr>+ ')' ;     \
-     lispy    : /^/ <operator> <expr>+ /$/ ;                \
+    "                                                                  \
+     number   : /-?[0-9]+/ ;                                           \
+     operator : '+' | '-' | '*' | '/' | '^' | '%' | \"min\" | \"max\" ;\
+     expr     : <number> | '(' <operator> <expr>+ ')' ;                \
+     lispy    : /^/ <operator> <expr>+ /$/ ;                           \
     ",
             Number, Operator, Expr, Lispy);
 
