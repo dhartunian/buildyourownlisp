@@ -166,6 +166,10 @@ lval* builtin_op(lval* a, char* op) {
     if (strcmp(op, "+") == 0) { x->num += y->num; }
     if (strcmp(op, "-") == 0) { x->num -= y->num; }
     if (strcmp(op, "*") == 0) { x->num *= y->num; }
+    if (strcmp(op, "^") == 0) { x->num = pow(x->num, y->num); }
+    if (strcmp(op, "%") == 0) { x->num = x->num % y->num; }
+    if (strcmp(op, "max") == 0) { x->num = fmax(x->num, y->num); }
+    if (strcmp(op, "min") == 0) { x->num = fmin(x->num, y->num); }
     if (strcmp(op, "/") == 0) {
       if (y->num == 0) {
         lval_del(x);
