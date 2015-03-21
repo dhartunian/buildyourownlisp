@@ -7,6 +7,23 @@
 #define LASSERT(args, cond, err) \
   if (!(cond)) { lval_del(args); return lval_err(err); }
 
+#define LARGS(var, num_args, fname)      \
+  if (!(var->count == num_args)) { \
+    lval_del(var); \
+    char* formatstr = "Function %s expected %d args"; \
+    char buffer[50]; \
+    sprintf(buffer, formatstr, fname, num_args);    \
+    return lval_err(buffer);    \
+}
+
+#define LNOTEMPTY(var, fname)\
+  if (!(var->cell[0]->count != 0)) { \
+    lval_del(var); \
+    char buffer[50];                            \
+    sprintf(buffer, "Function %s passed {}", fname);    \
+    return lval_err(buffer);                                  \
+  }
+
 typedef enum { LVAL_NUM, LVAL_ERR, LVAL_SYM, LVAL_SEXPR, LVAL_QEXPR } value_type;
 
 typedef struct lval {
@@ -87,6 +104,15 @@ lval* lval_add(lval* v, lval* x) {
   return v;
 }
 
+lval* lval_push(lval* v, lval* x) {
+  v->count++;
+  v->cell = realloc(v->cell, sizeof(lval*) * v->count);
+  memmove(&v->cell[1], &v->cell[0], sizeof(lval*) * (v->count-1));
+  v->cell[0] = x;
+  return v;
+}
+
+
 lval* lval_read(mpc_ast_t* t) {
 
   if (strstr(t->tag, "number")) { return lval_read_num(t); }
@@ -143,10 +169,6 @@ lval* lval_eval(lval* v) {
   return v;
 }
 
-
-
-
-
 lval* lval_pop(lval* v, int i) {
   lval* x = v->cell[i];
   memmove(&v->cell[i], &v->cell[i+1],  sizeof(lval*) * (v->count-i-1));
@@ -165,12 +187,10 @@ lval* lval_take(lval* v, int i) {
 lval* lval_eval_sexpr(lval* v);
 
 lval* builtin_head(lval* a) {
-  LASSERT(a, a->count == 1,
-          "Function 'head' passed too many arguments");
+  LARGS(a, 1, "head");
   LASSERT(a, a->cell[0]->type == LVAL_QEXPR,
           "Function 'head' passed incorrect types!");
-  LASSERT(a, a->cell[0]->count != 0,
-          "Function 'head' passed {}!");
+  LNOTEMPTY(a, "head");
 
   lval* v = lval_take(a, 0); //argument to head
 
@@ -179,12 +199,10 @@ lval* builtin_head(lval* a) {
 }
 
 lval* builtin_tail(lval* a) {
-  LASSERT(a, a->count == 1,
-          "Function 'tail' passed too many arguments");
+  LARGS(a, 1, "tail");
   LASSERT(a, a->cell[0]->type == LVAL_QEXPR,
           "Function 'tail' passed incorrect types!");
-  LASSERT(a, a->cell[0]->count != 0,
-          "Function 'tail' passed {}!");
+  LNOTEMPTY(a, "tail");
 
   lval* v = lval_take(a, 0); //argument to tail
 
@@ -199,9 +217,43 @@ lval* builtin_list(lval* a) {
   return a;
 }
 
+
+lval* builtin_cons(lval* a) {
+  LARGS(a, 2, "cons");
+  LASSERT(a, a->cell[1]->type == LVAL_QEXPR,
+          "Function cons passed a non-list second argument!");
+
+  lval* thing_to_cons = lval_pop(a, 0);
+  lval* list = lval_pop(a, 0);
+  lval_del(a);
+  return lval_push(list, thing_to_cons);
+}
+
+lval* builtin_len(lval* a) {
+  LARGS(a, 1, "len");
+  LASSERT(a, a->cell[0]->type == LVAL_QEXPR,
+          "Function 'len' passed incorrect types!");
+  int count = a->cell[0]->count;
+  lval* list = lval_pop(a, 0);
+  lval_del(list);
+  a->type = LVAL_NUM;
+  a->num = count;
+  return a;
+}
+
+lval* builtin_init(lval* a) {
+  LARGS(a, 1, "init");
+  LASSERT(a, a->cell[0]->type == LVAL_QEXPR,
+          "Function 'init' passed incorrect types!");
+
+  lval* arg = lval_pop(a, 0);
+  lval_pop(arg, (arg->count)-1);
+  lval_del(a);
+  return arg;
+}
+
 lval* builtin_eval(lval* a) {
-  LASSERT(a, a->count == 1,
-          "Function 'eval' passed too many arguments!");
+  LARGS(a, 1, "eval");
   LASSERT(a, a->cell[0]->type == LVAL_QEXPR,
           "Function 'eval' passed incorrect type!");
 
@@ -279,6 +331,9 @@ lval* builtin(lval* a, char* func) {
   if (strcmp("tail", func) == 0) { return builtin_tail(a); }
   if (strcmp("eval", func) == 0) { return builtin_eval(a); }
   if (strcmp("join", func) == 0) { return builtin_join(a); }
+  if (strcmp("cons", func) == 0) { return builtin_cons(a); }
+  if (strcmp("len", func) == 0) { return builtin_len(a); }
+  if (strcmp("init", func) == 0) { return builtin_init(a); }
   if (strcmp("+-/*", func)) { return builtin_op(a, func); }
   lval_del(a);
   return lval_err("Unknown Function!");
@@ -329,6 +384,7 @@ int main(int argc, char** argv) {
     "                                                                  \
      number   : /-?[0-9]+/ ;                                           \
      symbol   : \"list\" | \"head\" | \"tail\" | \"join\" | \"eval\"   \
+              | \"cons\" | \"len\" | \"init\"                          \
               | '+' | '-' | '*' | '/' | '^' | '%' | \"min\" | \"max\" ;\
      sexpr    : '(' <expr>* ')' ;                                      \
      qexpr    : '{' <expr>* '}' ;                                      \

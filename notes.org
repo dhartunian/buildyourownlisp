@@ -1,0 +1,13 @@
+* 4 Steps for Adding Language Features
+  1. Syntax
+     - Parser modifications
+  2. Representation
+     - Objects and data to represent feature
+  3. Parsing
+     - Modify reader/printer
+     - AST -> read feature
+  4. Semantics
+     - Evaluation and manipulation
+* Common Pitfalls
+  - When writing a builtin operation remember to operate on the ARGUMENTS of the lval that's passed in. This usually involves popping them off the lval first.
+  - Remember to delete the container lval that runs the builtin function before returning the newly created lval that's inside to replace it.
