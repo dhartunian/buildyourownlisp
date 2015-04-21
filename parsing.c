@@ -11,13 +11,11 @@
     lval_del(args);\
 }
 
-#define LARGS(var, num_args, fname)      \
-  if (!(var->count == num_args)) { \
-    lval_del(var); \
-    char* formatstr = "Function %s expected %d args"; \
-    char buffer[50]; \
-    sprintf(buffer, formatstr, fname, num_args);    \
-    return lval_err(buffer);    \
+#define LARGS(var, num_args, fname) {     \
+  LASSERT(var, (var->count == num_args), \
+          "Function %s passed too many arguments. " \
+          "Got %i, Expected %i.", \
+          fname, var->count, num_args); \
 }
 
 #define LNOTEMPTY(var, fname)\
@@ -55,6 +53,18 @@ struct lenv {
   char** syms;
   lval** vals;
 };
+
+char* ltype_name(int t) {
+  switch(t) {
+  case LVAL_NUM: return "Number";
+  case LVAL_ERR: return "Error";
+  case LVAL_SYM: return "Symbol";
+  case LVAL_FUN: return "Function";
+  case LVAL_SEXPR: return "S-Expression";
+  case LVAL_QEXPR: return "Q-Expression";
+  default: return "Unknown";
+  }
+}
 
 lenv* lenv_new(void) {
   lenv* e = malloc(sizeof(lenv));
@@ -311,7 +321,9 @@ lval* lval_eval_sexpr(lenv* e, lval* v);
 lval* builtin_head(lenv* e, lval* a) {
   LARGS(a, 1, "head");
   LASSERT(a, a->cell[0]->type == LVAL_QEXPR,
-          "Function 'head' passed incorrect types!");
+          "Function 'head' passed incorrect type for argument 0. "
+          "Got %s, Expected %s.", ltype_name(a->cell[0]->type),
+          ltype_name(LVAL_QEXPR));
   LNOTEMPTY(a, "head");
 
   lval* v = lval_take(a, 0); //argument to head
@@ -323,7 +335,9 @@ lval* builtin_head(lenv* e, lval* a) {
 lval* builtin_tail(lenv* e, lval* a) {
   LARGS(a, 1, "tail");
   LASSERT(a, a->cell[0]->type == LVAL_QEXPR,
-          "Function 'tail' passed incorrect types!");
+          "Function 'tail' passed incorrect type for argument 0. "
+          "Got %s, Expected %s.", ltype_name(a->cell[0]->type),
+          ltype_name(LVAL_QEXPR));
   LNOTEMPTY(a, "tail");
 
   lval* v = lval_take(a, 0); //argument to tail
@@ -334,7 +348,9 @@ lval* builtin_tail(lenv* e, lval* a) {
 
 lval* builtin_list(lenv* e, lval* a) {
   LASSERT(a, a->type == LVAL_SEXPR,
-          "Function 'list' passed incorrect type");
+          "Function 'list' passed incorrect type for argument 0. "
+          "Got %s, Expected %s.", ltype_name(a->type),
+          ltype_name(LVAL_SEXPR));
   a->type = LVAL_QEXPR;
   return a;
 }
@@ -343,7 +359,9 @@ lval* builtin_list(lenv* e, lval* a) {
 lval* builtin_cons(lenv* e, lval* a) {
   LARGS(a, 2, "cons");
   LASSERT(a, a->cell[1]->type == LVAL_QEXPR,
-          "Function cons passed a non-list second argument!");
+          "Function cons passed a non-list second argument!"
+          "Got %s, Expected %s.", ltype_name(a->cell[1]->type),
+          ltype_name(LVAL_QEXPR));
 
   lval* thing_to_cons = lval_pop(a, 0);
   lval* list = lval_pop(a, 0);
@@ -354,7 +372,9 @@ lval* builtin_cons(lenv* e, lval* a) {
 lval* builtin_len(lenv* e, lval* a) {
   LARGS(a, 1, "len");
   LASSERT(a, a->cell[0]->type == LVAL_QEXPR,
-          "Function 'len' passed incorrect types!");
+          "Function 'len' passed incorrect type for argument 0. "
+          "Got %s, Expected %s.", ltype_name(a->cell[0]->type),
+          ltype_name(LVAL_QEXPR));
   int count = a->cell[0]->count;
   lval* list = lval_pop(a, 0);
   lval_del(list);
@@ -367,7 +387,9 @@ lval* builtin_len(lenv* e, lval* a) {
 lval* builtin_init(lenv* e, lval* a) {
   LARGS(a, 1, "init");
   LASSERT(a, a->cell[0]->type == LVAL_QEXPR,
-          "Function 'init' passed incorrect types!");
+          "Function 'init' passed incorrect type for argument 0. "
+          "Got %s, Expected %s.", ltype_name(a->cell[0]->type),
+          ltype_name(LVAL_QEXPR));
 
   lval* arg = lval_pop(a, 0);
   lval_pop(arg, (arg->count)-1);
@@ -378,7 +400,9 @@ lval* builtin_init(lenv* e, lval* a) {
 lval* builtin_eval(lenv* e, lval* a) {
   LARGS(a, 1, "eval");
   LASSERT(a, a->cell[0]->type == LVAL_QEXPR,
-          "Function 'eval' passed incorrect type!");
+          "Function 'eval' passed incorrect type for argument 0. "
+          "Got %s, Expected %s.", ltype_name(a->cell[0]->type),
+          ltype_name(LVAL_QEXPR));
 
   lval* x = lval_take(a, 0);
   x->type = LVAL_SEXPR;
@@ -397,7 +421,9 @@ lval* lval_join(lval* x, lval* y) {
 lval* builtin_join(lenv* e, lval* a) {
   for (int i = 0; i< a->count; i++) {
     LASSERT(a, a->cell[i]->type == LVAL_QEXPR,
-            "Function 'join' passed incorrect type.");
+            "Function 'join' passed incorrect type for argument %i. "
+            "Got %s, Expected %s.", i+1, ltype_name(a->cell[i]->type),
+            ltype_name(LVAL_QEXPR));
   }
 
   lval* x = lval_pop(a, 0);
