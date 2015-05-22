@@ -11,3 +11,5 @@
 * Common Pitfalls
   - When writing a builtin operation remember to operate on the ARGUMENTS of the lval that's passed in. This usually involves popping them off the lval first.
   - Remember to delete the container lval that runs the builtin function before returning the newly created lval that's inside to replace it.
+* TODOs
+  - What is the logic behind who destroys variables and frees their memory? Still don't fully grasp this.
