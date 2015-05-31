@@ -13,3 +13,4 @@
   - Remember to delete the container lval that runs the builtin function before returning the newly created lval that's inside to replace it.
 * TODOs
   - What is the logic behind who destroys variables and frees their memory? Still don't fully grasp this.
+  - Possibly make a version of this in Rust/Go to learn those langs!
