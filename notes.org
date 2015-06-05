@@ -14,3 +14,5 @@
 * TODOs
   - What is the logic behind who destroys variables and frees their memory? Still don't fully grasp this.
   - Possibly make a version of this in Rust/Go to learn those langs!
+  - possibly expand standard lib to include stuff from other lisps
+  - how could we make an object model in here?
