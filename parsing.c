@@ -269,12 +269,16 @@ void lenv_put(lenv* e, lval* k, lval* v) {
 
 void lval_expr_print(lval* v, char open, char close);
 
+char* lval_to_builtin_function_name(lval* v);
+
 void lval_print(lval* v) {
   switch (v->type) {
   case LVAL_NUM: printf("%li", v->num); break;
   case LVAL_ERR: printf("Error: %s", v->err); break;
   case LVAL_SYM: printf("%s", v->sym); break;
-  case LVAL_FUN: printf("<function>"); break;
+  case LVAL_FUN: {
+    printf("<function '%s'>", lval_to_builtin_function_name(v));
+  }
   case LVAL_SEXPR: lval_expr_print(v, '(', ')'); break;
   case LVAL_QEXPR: lval_expr_print(v, '{', '}'); break;
   }
@@ -491,6 +495,23 @@ lval* builtin_def(lenv* e, lval* a) {
 
   lval_del(a);
   return lval_sexpr();
+}
+
+char* lval_to_builtin_function_name(lval* v) {
+  if (v->fun == builtin_cons) return "cons";
+  else if (v->fun == builtin_list) return "list";
+  else if (v->fun == builtin_head) return "head";
+  else if (v->fun == builtin_tail) return "tail";
+  else if (v->fun == builtin_eval) return "eval";
+  else if (v->fun == builtin_join) return "join";
+  else if (v->fun == builtin_init) return "init";
+  else if (v->fun == builtin_len) return "len";
+  else if (v->fun == builtin_add) return "add";
+  else if (v->fun == builtin_sub) return "sub";
+  else if (v->fun == builtin_mul) return "mul";
+  else if (v->fun == builtin_div) return "div";
+  else if (v->fun == builtin_def) return "def";
+  return "unknown";
 }
 
 void lenv_add_builtin(lenv* e, char* name, lbuiltin func) {
