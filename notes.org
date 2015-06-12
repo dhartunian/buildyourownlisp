@@ -16,3 +16,4 @@
   - Possibly make a version of this in Rust/Go to learn those langs!
   - possibly expand standard lib to include stuff from other lisps
   - how could we make an object model in here?
+  - implement same Lang in a different lisp
