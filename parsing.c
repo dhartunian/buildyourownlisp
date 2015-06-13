@@ -51,6 +51,7 @@ struct lval {
   char* err;
   char* sym;
   lbuiltin fun;
+  char* name;
 
   int count;
   struct lval** cell;
@@ -143,7 +144,7 @@ void lval_del(lval* v) {
   case LVAL_NUM: break;
   case LVAL_ERR: free(v->err); break;
   case LVAL_SYM: free(v->sym); break;
-  case LVAL_FUN: break;
+  case LVAL_FUN: free(v->name); break;
   case LVAL_QEXPR:
   case LVAL_SEXPR:
     for (int i=0; i< v->count;i++) {
@@ -215,7 +216,11 @@ lval* lval_copy(lval* v) {
   x->type = v->type;
 
   switch (v->type) {
-  case LVAL_FUN: x->fun = v->fun; break;
+  case LVAL_FUN:
+    x->fun = v->fun;
+    x->name = malloc(strlen(v->name) + 1);
+    strcpy(x->name, v->name);
+    break;
   case LVAL_NUM: x->num = v->num; break;
 
   case LVAL_ERR:
@@ -269,15 +274,17 @@ void lenv_put(lenv* e, lval* k, lval* v) {
 
 void lval_expr_print(lval* v, char open, char close);
 
-char* lval_to_builtin_function_name(lval* v);
-
 void lval_print(lval* v) {
   switch (v->type) {
   case LVAL_NUM: printf("%li", v->num); break;
   case LVAL_ERR: printf("Error: %s", v->err); break;
   case LVAL_SYM: printf("%s", v->sym); break;
   case LVAL_FUN: {
-    printf("<function '%s'>", lval_to_builtin_function_name(v));
+    if (v->name == NULL) {
+      printf("<function>"); break;
+    } else {
+      printf("<function %s>", v->name); break;
+    }
   }
   case LVAL_SEXPR: lval_expr_print(v, '(', ')'); break;
   case LVAL_QEXPR: lval_expr_print(v, '{', '}'); break;
@@ -353,7 +360,6 @@ lval* builtin_tail(lenv* e, lval* a) {
 }
 
 lval* builtin_list(lenv* e, lval* a) {
-  LASSERTTYPE(a, LVAL_QEXPR, 0, "list");
   a->type = LVAL_QEXPR;
   return a;
 }
@@ -497,26 +503,11 @@ lval* builtin_def(lenv* e, lval* a) {
   return lval_sexpr();
 }
 
-char* lval_to_builtin_function_name(lval* v) {
-  if (v->fun == builtin_cons) return "cons";
-  else if (v->fun == builtin_list) return "list";
-  else if (v->fun == builtin_head) return "head";
-  else if (v->fun == builtin_tail) return "tail";
-  else if (v->fun == builtin_eval) return "eval";
-  else if (v->fun == builtin_join) return "join";
-  else if (v->fun == builtin_init) return "init";
-  else if (v->fun == builtin_len) return "len";
-  else if (v->fun == builtin_add) return "add";
-  else if (v->fun == builtin_sub) return "sub";
-  else if (v->fun == builtin_mul) return "mul";
-  else if (v->fun == builtin_div) return "div";
-  else if (v->fun == builtin_def) return "def";
-  return "unknown";
-}
-
 void lenv_add_builtin(lenv* e, char* name, lbuiltin func) {
   lval* k = lval_sym(name);
   lval* v = lval_fun(func);
+  v->name = malloc(strlen(name) + 1);
+  strcpy(v->name, name);
   lenv_put(e, k, v);
   lval_del(k);
   lval_del(v);
