@@ -482,6 +482,15 @@ lval* builtin_div(lenv* e, lval* a) {
   return builtin_op(e, a, "/");
 }
 
+lval* builtin_dir(lenv* e, lval* a) {
+  lval* list_of_vars = ;
+  for (int i = 0; i < e->count; i++) {
+
+  }
+
+  return list_of_vars;
+}
+
 lval* builtin_def(lenv* e, lval* a) {
   LASSERTTYPE(a, LVAL_QEXPR, 0, "def")
 
@@ -530,6 +539,7 @@ void lenv_add_builtins(lenv* e) {
   lenv_add_builtin(e, "/", builtin_div);
 
   lenv_add_builtin(e, "def", builtin_def);
+  lenv_add_builtin(e, "dir", builtin_dir);
 }
 
 lval* lval_eval_sexpr(lenv* e, lval* v) {
