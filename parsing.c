@@ -485,9 +485,10 @@ lval* builtin_div(lenv* e, lval* a) {
 lval* builtin_dir(lenv* e, lval* a) {
   lval* list_of_vars = lval_qexpr();
   for (int i = 0; i < e->count; i++) {
-    lval_push(list_of_vars, lval_sym(e->syms[i]));
+    list_of_vars = lval_push(list_of_vars, lval_copy(e->vals[i]));
+    list_of_vars = lval_push(list_of_vars, lval_sym(e->syms[i]));
   }
-
+  lval_del(a);
   return list_of_vars;
 }
 
