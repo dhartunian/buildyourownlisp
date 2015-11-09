@@ -499,6 +499,21 @@ lval* builtin_def(lenv* e, lval* a) {
   for (int i = 0; i < syms->count; i++) {
     LASSERT(a, syms->cell[i]->type == LVAL_SYM,
             "Function 'def' cannot define non-symbol");
+    LASSERT(a, strcmp(syms->cell[i]->sym, "cons") != 0 &&
+               strcmp(syms->cell[i]->sym, "list") != 0 &&
+               strcmp(syms->cell[i]->sym, "head") != 0 &&
+               strcmp(syms->cell[i]->sym, "tail") != 0 &&
+               strcmp(syms->cell[i]->sym, "init") != 0 &&
+               strcmp(syms->cell[i]->sym, "join") != 0 &&
+               strcmp(syms->cell[i]->sym, "eval") != 0 &&
+               strcmp(syms->cell[i]->sym, "len") != 0 &&
+               strcmp(syms->cell[i]->sym, "+") != 0 &&
+               strcmp(syms->cell[i]->sym, "-") != 0 &&
+               strcmp(syms->cell[i]->sym, "*") != 0 &&
+               strcmp(syms->cell[i]->sym, "/") != 0 &&
+               strcmp(syms->cell[i]->sym, "dir") != 0 &&
+               strcmp(syms->cell[i]->sym, "def") != 0,
+            "Cannot redefine builtin");
   }
 
   LASSERT(a, syms->count == a->count-1,
