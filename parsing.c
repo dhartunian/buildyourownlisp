@@ -556,6 +556,7 @@ void lenv_add_builtins(lenv* e) {
 
   lenv_add_builtin(e, "def", builtin_def);
   lenv_add_builtin(e, "dir", builtin_dir);
+  lenv_add_builtin(e, "exit", builtin_dir);
 }
 
 lval* lval_eval_sexpr(lenv* e, lval* v) {
@@ -618,6 +619,9 @@ int main(int argc, char** argv) {
   while (1) {
     char* input = readline("lispy> ");
     add_history(input);
+    if (strcmp(input, "exit") == 0) {
+      break;
+    }
 
     mpc_result_t r;
     if (mpc_parse("<stdin>", input, Lispy, &r)) {
