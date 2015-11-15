@@ -170,12 +170,13 @@ void lval_del(lval* v) {
   case LVAL_SYM: free(v->sym); break;
   case LVAL_FUN:
     if (v->builtin) {
-      free(v->name); break;
+      free(v->name);
     } else {
       lenv_del(v->env);
       lval_del(v->formals);
       lval_del(v->body);
     }
+    break;
   case LVAL_QEXPR:
   case LVAL_SEXPR:
     for (int i=0; i< v->count;i++) {
@@ -666,6 +667,41 @@ void lenv_add_builtins(lenv* e) {
   lenv_add_builtin(e, "dir", builtin_dir);
   lenv_add_builtin(e, "exit", builtin_dir);
   lenv_add_builtin(e, "=", builtin_put);
+  lenv_add_builtin(e, "\\", builtin_lambda);
+}
+
+lval* lval_call(lenv* e, lval* f, lval* args) {
+  if (f->builtin) {
+    return f->builtin(e, args);
+  }
+
+  int given = args->count;
+  int total = f->formals->count;
+
+  while (args->count) {
+    if (f->formals->count == 0) {
+      lval_del(args);
+      return lval_err("Function passed too many arguments. "
+                      "Got %i, Expected %i", given, total);
+    }
+
+    lval* sym = lval_pop(f->formals, 0);
+    lval* val = lval_pop(args, 0);
+
+    lenv_put(f->env, sym, val);
+    lval_del(sym); lval_del(val);
+  }
+
+  if (f->formals->count == 0) {
+    //everything's bound!
+    f->env->par = e;
+    return builtin_eval(f->env,
+                        lval_add(lval_sexpr(), lval_copy(f->body)));
+  } else {
+    //return partially "evaluated" function!
+    return lval_copy(f);
+  }
+
 }
 
 lval* lval_eval_sexpr(lenv* e, lval* v) {
@@ -695,7 +731,7 @@ lval* lval_eval_sexpr(lenv* e, lval* v) {
     return lval_err("S-expression does not start with symbol!");
   }
 
-  lval* result = f->builtin(e, v);
+  lval* result = lval_call(e, f, v);
   lval_del(f);
   return result;
 }
