@@ -47,10 +47,18 @@ typedef lval*(*lbuiltin)(lenv*, lval*);
 struct lval {
   value_type type;
 
+  /* Basic */
   long num;
   char* err;
   char* sym;
-  lbuiltin fun;
+
+  /* Function */
+  lbuiltin builtin;
+  lenv* env;
+  lval* formals;
+  lval* body;
+
+  /* Made this to print builtin names... */
   char* name;
 
   int count;
@@ -84,10 +92,10 @@ lenv* lenv_new(void) {
 }
 
 
-lval* lval_fun(lbuiltin func) {
+lval* lval_fun(lbuiltin builtin) {
   lval* v = malloc(sizeof(lval));
   v->type = LVAL_FUN;
-  v->fun = func;
+  v->builtin = builtin;
   return v;
 }
 
@@ -139,12 +147,33 @@ lval* lval_qexpr(void) {
   return v;
 }
 
+lval* lval_lambda(lval* formals, lval* body) {
+  lval* v = malloc(sizeof(lval));
+  v->type = LVAL_FUN;
+
+  v->builtin = NULL;
+  v->env = lenv_new();
+  v->formals = formals;
+  v->body = body;
+
+  return v;
+}
+
+void lenv_del(lenv* e);
+
 void lval_del(lval* v) {
   switch (v->type) {
   case LVAL_NUM: break;
   case LVAL_ERR: free(v->err); break;
   case LVAL_SYM: free(v->sym); break;
-  case LVAL_FUN: free(v->name); break;
+  case LVAL_FUN:
+    if (v->builtin) {
+      free(v->name); break;
+    } else {
+      lenv_del(v->env);
+      lval_del(v->formals);
+      lval_del(v->body);
+    }
   case LVAL_QEXPR:
   case LVAL_SEXPR:
     for (int i=0; i< v->count;i++) {
@@ -217,9 +246,16 @@ lval* lval_copy(lval* v) {
 
   switch (v->type) {
   case LVAL_FUN:
-    x->fun = v->fun;
-    x->name = malloc(strlen(v->name) + 1);
-    strcpy(x->name, v->name);
+    if (v->builtin) {
+      x->builtin = v->builtin;
+      x->name = malloc(strlen(v->name) + 1);
+      strcpy(x->name, v->name);
+    } else {
+      x->builtin = NULL;
+      x->env = lenv_copy(v->env);
+      x->formals = lval_copy(v->formals);
+      x->body = lval_copy(v->body);
+    }
     break;
   case LVAL_NUM: x->num = v->num; break;
 
@@ -280,11 +316,17 @@ void lval_print(lval* v) {
   case LVAL_ERR: printf("Error: %s", v->err); break;
   case LVAL_SYM: printf("%s", v->sym); break;
   case LVAL_FUN: {
-    if (v->name == NULL) {
-      printf("<function>"); break;
+    if (v->builtin) {
+      if (v->name == NULL) {
+        printf("<function>"); break;
+      } else {
+        printf("<function %s>", v->name); break;
+      }
     } else {
-      printf("<function %s>", v->name); break;
+      printf("(\\ "); lval_print(v->formals);
+      putchar(' '); lval_print(v->body); putchar(')');
     }
+    break;
   }
   case LVAL_SEXPR: lval_expr_print(v, '(', ')'); break;
   case LVAL_QEXPR: lval_expr_print(v, '{', '}'); break;
@@ -336,6 +378,24 @@ lval* lval_take(lval* v, int i) {
 }
 
 lval* lval_eval_sexpr(lenv* e, lval* v);
+
+lval* builtin_lambda(lenv* e, lval* a) {
+  LARGS(a, 2, "\\");
+  LASSERTTYPE(a, LVAL_QEXPR, 0, "\\");
+  LASSERTTYPE(a, LVAL_QEXPR, 1, "\\");
+
+  for (int i = 0; i< a->cell[0]->count; i++) {
+    LASSERT(a, (a->cell[0]->cell[i]->type == LVAL_SYM),
+            "Cannot define non-symbol. Got %s, Expected %s.",
+            ltype_name(a->cell[0]->cell[i]->type), ltype_name(LVAL_SYM))
+  }
+
+  lval* formals = lval_pop(a, 0);
+  lval* body = lval_pop(a, 0);
+  lval_del(a);
+
+  return lval_lambda(formals, body);
+}
 
 lval* builtin_head(lenv* e, lval* a) {
   LARGS(a, 1, "head");
@@ -586,7 +646,7 @@ lval* lval_eval_sexpr(lenv* e, lval* v) {
     return lval_err("S-expression does not start with symbol!");
   }
 
-  lval* result = f->fun(e, v);
+  lval* result = f->builtin(e, v);
   lval_del(f);
   return result;
 }
