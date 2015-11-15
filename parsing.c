@@ -686,7 +686,42 @@ lval* lval_call(lenv* e, lval* f, lval* args) {
     }
 
     lval* sym = lval_pop(f->formals, 0);
+
+    /*
+     * Handle varargs in the if statement below
+     */
+    if (strcmp(sym->sym, "&") == 0) {
+      if (f->formals->count != 1) {
+        lval_del(args);
+        return lval_err("Function format invalid. "
+                        "Symbol '&' not followed by single symbol.");
+      }
+
+      lval* nsym = lval_pop(f->formals, 0);
+      lenv_put(f->env, nsym, builtin_list(e, args));
+      lval_del(sym); lval_del(nsym);
+      break;
+    }
+
     lval* val = lval_pop(args, 0);
+
+    lenv_put(f->env, sym, val);
+    lval_del(sym); lval_del(val);
+  }
+
+  lval_del(args);
+
+  if (f->formals->count > 0 &&
+      strcmp(f->formals->cell[0]->sym, "&") == 0) {
+    if (f->formals->count != 2) {
+      return lval_err("Function format invalid. "
+                      "Symbol '&' not followed by single symbol.");
+    }
+
+    lval_del(lval_pop(f->formals, 0));
+
+    lval* sym = lval_pop(f->formals, 0);
+    lval* val = lval_qexpr();
 
     lenv_put(f->env, sym, val);
     lval_del(sym); lval_del(val);
